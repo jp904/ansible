@@ -1,0 +1,41 @@
+---
+- name: Linux Create User and Upload User Public keys
+  hosts: test
+  remote_user: user
+  sudo: yes
+  vars:
+      user_1: pscanner
+  tasks:
+    - name: Make sure have 'wheel' group
+      group:
+        name: wheel
+        state: present
+ 
+    - name: Allow 'wheel' group to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+ 
+    - name: Create user {{ user_1 }}
+      user:
+        name: "{{ user_1 }}"
+        shell: /bin/bash
+        groups: wheel
+        createhome: yes
+        home: /home/{{ user_1 }}
+        state: present
+ 
+    - name: create key directory
+      action: file path=/home/{{ user_1 }}/.ssh/ state=directory  owner={{ user_1 }} group={{ user_1 }} mode=0700
+ 
+    - name: create key file
+      action: file path=/home/{{ user_1 }}/.ssh/authorized_keys state=touch  owner={{ user_1 }} group={{ user_1 }} mode=0600
+        
+ 
+    - name: Set authorized key took from file
+      authorized_key:
+        user: "{{ user_1 }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
