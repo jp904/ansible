@@ -1,0 +1,62 @@
+---
+- name: Linux Create User and Upload User Public keys
+  hosts: test
+  remote_user: user
+  sudo: yes
+  vars:
+      user_1: qscanner
+  tasks:
+
+
+    - name: Create user {{ user_1 }}
+      user:
+        name: "{{ user_1 }}"
+        comment: "Functional ID – Contact, vulnerablilityscanning@accenture.com"
+        shell: /bin/bash
+        groups: adm
+        createhome: yes
+        home: /home/{{ user_1 }}
+        state: present
+
+    - name: Change Mode for 'Home' '755'
+      command: chmod 755 /home/{{ user_1 }}
+
+
+    - name: Disabling Password login
+      lineinfile:
+        dest: /etc/passwd
+        state: present
+        regexp: '^(.*)qscanner:x(.*)$'
+        line: '\1qscanner:*\2'
+        backup: yes
+        backrefs: yes
+
+
+    - name: create key directory
+      file:
+        path: /home/{{ user_1 }}/.ssh/
+        state: directory
+
+    - name: Change Mode for '.ssh'
+      command: chmod 755 /home/qscanner/.ssh
+
+    - name: create key file
+      file:
+        path: /home/{{ user_1 }}/.ssh/authorized_keys
+        state: touch
+
+    - name: Change Mode for 'Authorized_Keys'
+      command: chmod 600 /home/{{ user_1}}/.ssh/authorized_keys
+
+    - name: Set authorized key took from file
+      authorized_key:
+        user: "{{ user_1 }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    - name: Allow 'adm' group to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: 'qscanner'
+        line: 'qscanner ALL=(ALL) NOPASSWD: ALL'
